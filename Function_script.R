@@ -391,26 +391,155 @@ EtoWmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)
 
 
 
-Traps
+#====================================================================================== 
+## Function >7 Newly created functions
+#======================================================================================
+#
+# Functions I have made to make life easier but havent fully noted yet
+Unique <- function(Data, Formatted){
+  string <- c(NA)
+  for(n in 1:length(Data)){
+    string <- c(string,Data[[n]])
+  }
+  string <- string[-1]
+  length <- c()
+  for(n in 1:ncol(Formatted)){
+    length[n] <- length(Data[[n]])
+  }
+  if(sum(length) == length(string)) {
+    show("Match")
+  }
+  scanned <- c()
+  for(n in 1:length(string)){
+    if(str_detect(string[n],"[:alpha:]")){
+      scanned <- c(scanned,string[n])
+    }
+  }
+  return(unique(scanned))
+}
 
-k <- 2
-m <- 1
+DataFrame <- function(Data,Formatted,Unique,Setup,Conversion){
+  Found <- c()
+  for (d in 1:ncol(Formatted)){
+    for(n in 1:length(Unique)){
+      ifelse(length(grep(Unique[n],Data[[d]]))>=1,Found <- c(Found,1),Found <- c(Found,0))
+    }
+    if(d == round(ncol(Formatted)*0.25,0)){show("25% formatted.")}
+    if(d == round(ncol(Formatted)*0.5,0)){show("50% formatted.")}
+    if(d == round(ncol(Formatted)*0.75,0)){show("75% formatted.")}
+    if(d == ncol(Formatted)){show("100% formatted")}
+  }
+  ID <- rep(Unique,ncol(Formatted))
+  if(Setup[[5]]){
+    Bottle <- rep(rep(c("N","E","S","W"),each = length(Unique)),times=(ncol(Formatted)/4))
+    Event <- rep(c(1:Setup[[3]]),each = ((length(Unique)*Setup[[4]]*4)))
+    LongX <- rep(rep(Conversion[[4]][seq(1,length(Conversion[[4]])-1,by=2)], each=length(Unique)*4),times=Setup[[3]])
+    LatY <- rep(rep(Conversion[[4]][seq(2,length(Conversion[[4]]),by=2)], each=length(Unique)*4),times=Setup[[3]])
+    Trap <- rep(rep(c(1:Setup[[4]]), each=length(Unique)*4),times=Setup[[3]])
+    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Bottle" = Bottle, "Found" = c(Found)))
+  } else {
+    Event <- rep(c(1:Setup[[3]]),each = ((length(Unique)*Setup[[4]])))
+    LongX <- rep(Conversion[[4]][seq(1,length(Conversion[[4]])-1,by=2)],times=Setup[[3]])
+    LatY <- rep(Conversion[[4]][seq(2,length(Conversion[[4]]),by=2)],times=Setup[[3]])
+    Trap <- rep(c(1:Setup[[4]]),times=Setup[[3]]) 
+    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Found" = c(Found)))
+  }
+}
 
-two_matrix <- list(matrix(3,4,5),matrix(7,3,4))
-two_matrix[[2]][3,2] <- 15
+Repeat <- function(Unique,Dataframe,Setup,Formatted){
+  RepMat <- matrix(0,Setup[[3]],length(Unique))
+  for (E in 1:Setup[[3]]){
+    if(Setup[[5]]){
+      for(U in 1:length(Unique)){
+        for(t in 1:5){
+          sum <- sum(Dataframe[seq(((E-1)*(nrow(Dataframe)/Setup[[3]]))+U,length.out = (4*Setup[[4]]),by=length(Unique)),][seq(to=(t*4),length.out = 4),]$Found)
+          if(sum>=1){
+            RepMat[E,U] <- RepMat[E,U]+1
+          }
+        }
+      }
+    } else {
+      for(U in 1:length(Unique)){
+        sum <- sum(DataFrame[seq(((E-1)*(nrow(DataFrame)/Setup[[3]]))+U,length.out = 5,by=length(Unique)),]$Found)
+        if(sum>=1){
+          RepMat[E,U] <- sum
+        }
+      }
+    }
+    show(E)
+  }
+  Repeat <- c()
+  for(n in 1:Setup[[3]]){
+    Repeat <- c(Repeat, rep(RepMat[n,],times=(ncol(Formatted)/Setup[[3]])))
+  }
+  List <- list(Repeat,RepMat)
+  return(List)
+}
 
+Outline <- function(Conversion){
+  county <- c(seq(2,length(Conversion[[3]]),by=2),2)
+  countx <- c(seq(1,length(Conversion[[3]]),by=2),1)
+  ally <- c()
+  allx <- c()
+  for(k in 1:(length(county)-1)){
+    ally <- c(ally,Conversion[[3]][county[k]]:Conversion[[3]][county[k+1]])
+    allx <- c(allx,seq(Conversion[[3]][countx[k]],Conversion[[3]][countx[k+1]],length.out = length(Conversion[[3]][county[k]]:Conversion[[3]][county[k+1]])))
+  }
+  allx <- round(allx,0)
+  building <- list()
+  building[[max(ally)]] <- NA
+  for(n in 1:length(ally)){
+    building[[ally[n]]] <- c(building[[ally[n]]],allx[n])
+  }
+  building[[max(ally)]] <- building[[max(ally)]][-1]
+  for(n in 1:length(building)){
+    if(sum(duplicated(building[[n]]))>=1){
+      building[[n]] <- building[[n]][-which(duplicated(building[[n]]))]
+    }
+    building[[n]] <- sort(building[[n]])
+  }
+  rows <- list()
+  rows[[length(building)+1]] <- NA
+  for(n in 1:length(building)){
+    if(length(building[[n]])==1){
+      rows[[n]] <- building[[n]]
+    } else if (length(building[[n]])==2){
+      rows[[n]] <- seq(building[[n]][1],building[[n]][2],by = 1)
+    } else {
+      for(c in 1:(length(building[[n]])/2)){
+        rows[[n]] <- c(rows[[n]],
+                       seq(building[[n]][seq(1,length(building[[n]])-1,by=2)[c]],
+                           building[[n]][seq(2,length(building[[n]]),by=2)[c]],
+                           by=1))
+      }
+    }
+  }
+  rows[[length(building)+1]] <- NULL
+  return(rows)
+}
 
-data[1:20,1:20]
-
-plot_outline <- conversion[[3]]
-trap_locations <- conversion[[4]]
-
-length(plot_outline)
-X <- c(plot_outline[1],plot_outline[3],plot_outline[5],plot_outline[7],plot_outline[9],plot_outline[11],plot_outline[13],plot_outline[15])
-Y <- c(plot_outline[2],plot_outline[4],plot_outline[6],plot_outline[8],plot_outline[10],plot_outline[12],plot_outline[14],plot_outline[16])
-plot(X,Y)
-points(XT,YT,pch=19)
-points(trap_locations[9],trap_locations[10], pch=19)
-length(trap_locations)
-XT <- c(trap_locations[1],trap_locations[3],trap_locations[5],trap_locations[7],trap_locations[9])
-YT <- c(trap_locations[2],trap_locations[4],trap_locations[6],trap_locations[8],trap_locations[10])
+Plot <- function(Outline, Setup, Unique, Repeat, Conversion, Model){
+  start <- Sys.time()
+  plotholder <- list()
+  for(E in 1:Setup[[3]]){
+    matrix <- matrix(NA,nrow=Conversion[[2]],ncol=Conversion[[1]])
+    for(Y in 1:length(Outline)){
+      for(X in 1:length(Outline[[Y]])){
+        newdata <- data.frame("LongX" = rep(Outline[[Y]][X],time=length(Unique)),
+                              "LatY" = rep(Y,time=length(Unique)),
+                              "Event" = rep(E,time=length(Unique)),
+                              "Repeat" = Repeat[[2]][E,]) 
+        matrix[Y,Outline[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata)>=0.5,1,0))
+      }
+      if(Y==round(length(Outline)*0.25,0)){show("25%")}
+      if(Y==round(length(Outline)*0.25,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.5,0)){show("50%")}
+      if(Y==round(length(Outline)*0.5,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.75,0)){show("75%")}
+      if(Y==round(length(Outline)*0.75,0)){show(Sys.time())}
+    }
+    plotholder[[E]] <- matrix
+    show(E)
+  }
+  return(plotholder)
+}
