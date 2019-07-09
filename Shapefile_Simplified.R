@@ -1,4 +1,5 @@
 ## how to transform data into shape file
+
 library(sf)
 library(sp)
 
@@ -7,7 +8,7 @@ x1 <- cbind(c(40,50,50,40,40),c(40,40,50,50,40))
 x2 <- cbind(c(40,40,50,50,40),c(30,40,40,30,30))
 
 #each value is assigned to a polygon
-#use Polygon function to outline one cube of matrix an put in in the Polygons function 
+#use Polygon function to outline one cube of matrix an put in in the Polygons function
 #(ID numbers dont seem to matter)
 poly1 <- Polygons(list(Polygon(x)),"ID1")
 poly2 <- Polygons(list(Polygon(x1)), "ID2")
@@ -19,12 +20,12 @@ D <- list(poly1,poly2,poly3)
 #Convert to Spatial Polygons
 C <- SpatialPolygons(D)
 
-#Get the coordinates from C and convert them into x and y coordinate vectors 
+#Get the coordinates from C and convert them into x and y coordinate vectors
 coordinates <- coordinates(C)
 xc <- coordinates[,1]
 yc <- coordinates[,2]
 
-#make a vector with the values, the order the polygons are in the list is the order their values 
+#make a vector with the values, the order the polygons are in the list is the order their values
 #should be inputted into the vector
 L <- c(4,14,15)
 
