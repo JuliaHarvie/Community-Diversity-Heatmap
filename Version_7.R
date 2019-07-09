@@ -1,8 +1,17 @@
 #######################################################################################
 # 
-# For this run through using the case study AGAW
-#
-# 
+# Below are the lines of code requirred to run the script start to finish assuming all the functions have alreayd been read in
+
+Field_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_field.csv"
+Trap_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_trap.csv"
+TSV <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW.tsv"
+
+setup <- Setup(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
+formatted <- Formatting_mBrave(File=TSV,ID = "", Suffix_Symbol = ")", Slam_trap = T)
+data <- Data(File = read.csv(CSV), Setup = setup)
+
+
+ 
 #====================================================================================== 
 ## Function 1 - Setup
 #======================================================================================
@@ -11,6 +20,8 @@
 # if no value is given for number of weeks will default as one. The order the trap coordinates are inputed should correspond to the order the data is 
 # in regarding traps. Ie. The first pair of coordinates in the list of trap coordiates should corespond to the first trap whos results are reported in 
 # the data sheet.If Slam trap is not set to True will assume deafutl malasis trap was used.  
+
+### Update so the Boarder_Coor and Trap_Coor are pulled from a single .csv
 
 Setup <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Events = NULL, Slam_trap = FALSE){
   ### Produces a warning if BC can not be read otherwises turns them into a vector ###
@@ -40,9 +51,6 @@ Setup <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Eve
   storage <- list(BC, TC, Number_of_Sampling_Events, Number_of_Traps, Slam_trap)
   return(storage)
 }
-
-# Save the results from the function "setup" to an object
-setup <- Setup(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
 
 #====================================================================================== 
 ## Function 2 - Formatting from mBrave
@@ -157,9 +165,6 @@ Formatting_mBrave <- function(File, ID, Suffix_Symbol, Slam_trap = F) {
   return(ready)  
 }
 
-# A data frame has been created that has the correct layout to run thrught the rest of the code
-formatted <- Formatting_mBrave(File=File,ID = "AGAS", Suffix_Symbol = ")", Slam_trap = T)
-
 #====================================================================================== 
 ## Function 3 - Data
 #======================================================================================
@@ -184,9 +189,6 @@ Data <- function(File, Setup) {
   }
   return(trap)
 }
-
-# Include the object created from function 1 (setup) and a dataframe containing all of the samples 
-data <- Data(File = read.csv(CSV), Setup = setup)
 
 #====================================================================================== 
 ## Function 4 - Distance Conversions
@@ -288,80 +290,84 @@ Conversion <- function(Setup, Poles = F){
 
 conversion <- Conversion(Setup = setup)
 
+### Pretty sure the function below is no longer need, going to
+
 #====================================================================================== 
-## Function 6 - Array Placment 
+## Function  - Array Placment 
 #======================================================================================
 #
 # Takes the the converted quarentents and uses them to build an array as well as being to populate it with known abundance valueas. 
 
-Array_placement <- function(Setup, Outlines, Data){
-  all_matrix <- list()
-  traps <- list()
-  if (Setup[[5]]){
-    for(m in 1:Setup[[3]]){
-      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
-      for (k in 1:Setup[[4]]){
-        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-3]])
-        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-2]])
-        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-1]])
-        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4]])
-        if(m == 1){
-          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
-        }
-      }
-    }
-  } else {
-    for(m in 1:Setup[[3]]){
-      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
-      for (k in 1:Setup[[4]]){
-        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
-        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*Setup[[4]])+k]])
-        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
-        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*Setup[[4]])+k]])
-        if(m == 1){
-          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
-        }
-      }
-    }
-  }
-  sort_y <- c()  
-  for(T in 1:Setup[[4]]){
-    sort_y[T] <- traps[[T]][[2]]  
-  }
-  ### top to bottom (NtoS) ###  
-  TtoB <- sort(sort_y,decreasing =TRUE)
-  TtoBmatrix <- matrix(NA, Setup[[4]]+1, 5)
-  for (r in 1:5){
-    for (k in 1:5){
-      if (TtoB[r] == traps[[k]][[2]]){
-        TtoBmatrix[r,] <- c(traps[[k]][[3]], NA)
-      }
-    }
-  }
-  sort_x <- c()  
-  for(T in 1:Setup[[4]]){
-    sort_x[T] <- traps[[T]][[1]]  
-  }
-  ### right to left (east to west) ###  
-  RtoL <- sort(sort_x,decreasing =TRUE)  
-  RtoLmatrix <- matrix(NA, Setup[[4]]+1, 5)
-  for (r in 1:Setup[[4]]){
-    for (k in 1:Setup[[4]]){
-      if (RtoL[r] == traps[[k]][[1]]){
-        RtoLmatrix[r,] <- c(traps[[k]][[3]], NA)
-      }
-    }
-  }
-  return(list(all_matrix,traps,TtoBmatrix,RtoLmatrix))
-}
+#Array_placement <- function(Setup, Outlines, Data){
+#  all_matrix <- list()
+#  traps <- list()
+#  if (Setup[[5]]){
+#    for(m in 1:Setup[[3]]){
+#      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
+#      for (k in 1:Setup[[4]]){
+#        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-3]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-2]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-1]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4]])
+#        if(m == 1){
+#          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
+#        }
+#      }
+#    }
+#  } else {
+#    for(m in 1:Setup[[3]]){
+#      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
+#      for (k in 1:Setup[[4]]){
+#        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*Setup[[4]])+k]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
+#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*Setup[[4]])+k]])
+#        if(m == 1){
+#          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
+#        }
+#      }
+#    }
+#  }
+#  sort_y <- c()  
+#  for(T in 1:Setup[[4]]){
+#    sort_y[T] <- traps[[T]][[2]]  
+#  }
+#  ### top to bottom (NtoS) ###  
+#  TtoB <- sort(sort_y,decreasing =TRUE)
+#  TtoBmatrix <- matrix(NA, Setup[[4]]+1, 5)
+#  for (r in 1:5){
+#    for (k in 1:5){
+#      if (TtoB[r] == traps[[k]][[2]]){
+#        TtoBmatrix[r,] <- c(traps[[k]][[3]], NA)
+#      }
+#    }
+#  }
+#  sort_x <- c()  
+#  for(T in 1:Setup[[4]]){
+#    sort_x[T] <- traps[[T]][[1]]  
+#  }
+#  ### right to left (east to west) ###  
+#  RtoL <- sort(sort_x,decreasing =TRUE)  
+#  RtoLmatrix <- matrix(NA, Setup[[4]]+1, 5)
+#  for (r in 1:Setup[[4]]){
+#    for (k in 1:Setup[[4]]){
+#      if (RtoL[r] == traps[[k]][[1]]){
+#        RtoLmatrix[r,] <- c(traps[[k]][[3]], NA)
+#      }
+#    }
+#  }
+#  return(list(all_matrix,traps,TtoBmatrix,RtoLmatrix))
+#}
 
 
 # The object returned from this function is a two part list. For simplicity it is recommened to segrate them into their own objects. As done below
-plots <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[1]]
-traps <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[2]]
+#plots <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[1]]
+#traps <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[2]]
 # I am going to name the object containing my direction matrices using north, south, east and west, not top, bottom, right and left because
 # conceptually easier, but note techincally is still refereing to positions in an array which does not have geographical directions  
-NtoSmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[3]] 
-EtoWmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[4]] 
+#NtoSmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[3]] 
+#EtoWmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[4]] 
+
+
 
 
