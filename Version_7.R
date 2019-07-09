@@ -1,17 +1,27 @@
 #######################################################################################
 # 
+# Install
+#
+library(stringr) 
+library(data.table)
+#
 # Below are the lines of code requirred to run the script start to finish assuming all the functions have alreayd been read in
+#
 
 Field_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_field.csv"
 Trap_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_trap.csv"
 TSV <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW.tsv"
 
 setup <- Setup(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
-formatted <- Formatting_mBrave(File=TSV,ID = "", Suffix_Symbol = ")", Slam_trap = T)
-data <- Data(File = read.csv(CSV), Setup = setup)
+formatted <- Formatting_mBrave(File=as.data.frame(fread(TSV)),ID = "AGAW", Suffix_Symbol = ")", Slam_trap = T)
+#File can equal ouput of formatted or read in a csv with right layout
+data <- Data(File = formatted, Setup = setup)
+data <- Data(File = read.csv(), Setup = setup)
+conversion <- Conversion(Setup = setup)
+unique <- Unique(Data = data)
+masterframe <- MasterDataframe(Data=data,Unique=unique,Setup = setup,Conversion = conversion)
 
-
- 
+#
 #====================================================================================== 
 ## Function 1 - Setup
 #======================================================================================
@@ -183,9 +193,9 @@ Data <- function(File, Setup) {
   }  
   trap <- list(c(1))
   for(n in 1:ncol(File)){
-    trap[[(n)]] <- (File[,n])
-    trap[[(n)]] <- as.character(trap[[(n)]])
-    trap[[(n)]] <- trap[[(n)]][trap[[(n)]]!=""]
+    trap[[n]] <- (File[,n])
+    trap[[n]] <- as.character(trap[[n]])
+    trap[[n]] <- trap[[n]][which(!is.na(trap[[n]]))]
   }
   return(trap)
 }
@@ -288,8 +298,6 @@ Conversion <- function(Setup, Poles = F){
   return(list(plot_outline,trap_locations))
 }
 
-conversion <- Conversion(Setup = setup)
-
 ### Pretty sure the function below is no longer need, going to
 
 #====================================================================================== 
@@ -371,3 +379,67 @@ conversion <- Conversion(Setup = setup)
 
 
 
+
+
+
+
+
+#====================================================================================== 
+## Function 6 - Unique
+#======================================================================================
+# 
+# Even though this technically is just creating one vector that will be incorrperated into a master dataframe later.
+# Going to keep it as its own function because this is an important list and might be nice to be able to produce it on its own. 
+
+Unique <- function(Data){
+  string <- c(NA)
+  for(n in 1:length(Data)){
+    string <- c(string,Data[[n]])
+  }
+  string <- string[-1]
+  length <- c()
+  for(n in 1:length(data)){
+    length[n] <- length(Data[[n]])
+  }
+  scanned <- c()
+  for(n in 1:length(string)){
+    if(str_detect(string[n],"[:alpha:]")){
+      scanned <- c(scanned,string[n])
+    }
+  }
+  return(unique(scanned))
+}
+
+#====================================================================================== 
+## Function 7 - Master Dataframe
+#======================================================================================
+# 
+MasterDataframe <- function(Data,Unique,Setup,Conversion){
+  # remember to switch lower case back to upper case
+  Found <- c()
+  for (d in 1:length(Data)){
+    for(n in 1:length(unique)){
+    ## Need to fix this statement
+      Found <- ifelse(length(grep(unique[n],data[[d]]))>=1,1,0)
+    }
+    if(d == round(length(Data)*0.25,0)){show("25% formatted.")}
+    if(d == round(length(Data)*0.5,0)){show("50% formatted.")}
+    if(d == round(length(Data)*0.75,0)){show("75% formatted.")}
+    if(d == length(Data)){show("100% formatted")}
+  }
+  ID <- rep(unique,length(data))
+  if(Setup[[5]]){
+    Bottle <- rep(rep(c("N","E","S","W"),each = length(Unique)),times=(length(Data)/4))
+    Event <- rep(c(1:setup[[3]]),each = ((length(unique)*setup[[4]]*4)))
+    LongX <- rep(rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)], each=length(Unique)*4),times=Setup[[3]])
+    LatY <- rep(rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)], each=length(Unique)*4),times=Setup[[3]])
+    Trap <- rep(rep(c(1:Setup[[4]]), each=length(Unique)*4),times=Setup[[3]])
+    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Bottle" = Bottle, "Found" = c(Found)))
+  } else {
+    Event <- rep(c(1:Setup[[3]]),each = ((length(Unique)*Setup[[4]])))
+    LongX <- rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)],times=Setup[[3]])
+    LatY <- rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)],times=Setup[[3]])
+    Trap <- rep(c(1:Setup[[4]]),times=Setup[[3]]) 
+    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Found" = c(Found)))
+  }
+}
