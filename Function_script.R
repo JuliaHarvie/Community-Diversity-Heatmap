@@ -1,8 +1,8 @@
 ### here is the file path for coor files, run at startup to save time,
-Field_Coors <- "C:\\Users\\Julia\\Documents\\AGM Field Map\\Currently Using\\Current\\Field Data\\AGAW\\AGAW_coords_field.csv"
-Trap_Coors <- "C:\\Users\\Julia\\Documents\\AGM Field Map\\Currently Using\\Current\\Field Data\\AGAW\\AGAW_coords_trap.csv"
-CSV <- "C:\\Users\\Julia\\Documents\\AGM Field Map\\Currently Using\\Current\\Field Data\\AGAW\\AGAW_All.csv"
-TSV <- "C:\\Users\\Julia\\Downloads\\All-4.tsv" 
+Field_Coors <- "C:\\Users\\julia\\Desktop\\Heatmap\\Saved Files\\AGAW_coords_field.csv"
+Trap_Coors <- "C:\\Users\\julia\\Desktop\\Heatmap\\Saved Files\\AGAW_coords_trap.csv"
+CSV <- "C:\\Users\\julia\\Desktop\\Heatmap\\Saved Files\\AGAW_All.csv"
+TSV <- "C:\\Users\\julia\\Desktop\\Heatmap\\mBrave Files\\AGAW.tsv"
 library(stringr)
 library(data.table)
 File <-  as.data.frame(fread(TSV))
@@ -49,6 +49,7 @@ Setup <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Eve
 }
 
 # Save the results from the function "setup" to an object
+
 setup <- Setup(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
 
 #====================================================================================== 
@@ -75,6 +76,7 @@ Formatting_mBrave <- function(File, ID, Suffix_Symbol, Slam_trap = F) {
   split <- strsplit(File$runName, "[)]")
   g <- which(grepl(ID,split[[1]]))
   seperated <- as.data.frame(matrix(0,1,4))
+  n <- 1
   for (n in 1:length(split)){
     split[[n]] <- str_sub(split[[n]][g], str_locate(split[[n]],ID)[1,2] + 1)
     seperated[n,1] <- str_sub(split[[n]],str_locate_all(split[[n]], "[0-9]+")[[1]][,1],str_locate_all(split[[n]], "[0-9]+")[[1]][,2])[1]
@@ -172,7 +174,7 @@ return(ready)
 ### takes about 16 minutes to run ~84000 rows. (Runs at a ~ speed of 5250/min or 87/sec) ###
 old <- Sys.time()
 # A data frame has been created that has the correct layout to run thrught the rest of the code
-formatted <- Formatting_mBrave(File=File,ID = "AGAS", Suffix_Symbol = ")", Slam_trap = T)
+formatted <- Formatting_mBrave(File=File,ID = "AGAW", Suffix_Symbol = ")", Slam_trap = T)
 show(Sys.time() - old)
 
 #====================================================================================== 
@@ -206,7 +208,7 @@ Data <- function(File, Setup) {
 
 ### next time copy data function into version 7 and clean up nameing scheme of version 7 (ie when object has caps or not)
 data <- Data(File = read.csv(CSV), Setup = setup)
-
+data <- Data(File = formatted, Setup = setup)
 #====================================================================================== 
 ## Function 4 - Distance Conversions
 #======================================================================================
@@ -281,12 +283,13 @@ Conversion <- function(Setup, Poles = F){
 ### Calculates length of y axis (starts at BMY goes to TMY along the line of LMX) ###
     DY <- round(Distance(min(ycorners),max(ycorners),min(xcorners),min(xcorners)),0)
   }
-### Now need to convert other corners into distances relative to the bottom left corner of the newly defined plot  
+### Now need to convert other corners into distances relative to the bottom left corner of the newly defined plot ###
   plot_outline <- c()
   for (k in 1:length(xcorners)){
     plot_outline <- c(plot_outline, round(Distance(BMY,BMY,LMX,xcorners[k]),0),round(Distance(BMY,ycorners[k],LMX,LMX),0))
   }
   k <- 2
+### Plot outline completed ###
   xcorners <- c()
   for (x in 1:(length(Setup[[2]])/2)){
     xcorners[x] <- Setup[[2]][k]
@@ -302,9 +305,9 @@ Conversion <- function(Setup, Poles = F){
   for (k in 1:length(xcorners)){
     trap_locations <- c(trap_locations, round(Distance(BMY,BMY,LMX,xcorners[k]),0),round(Distance(BMY,ycorners[k],LMX,LMX),0))
   }
-  return(list(DX,DY,plot_outline,trap_locations))
+### +1 shitfs arrary to start at 1 not zero, necissary for further computational purposes ###  
+  return(list(DX+1,DY+1,plot_outline+1,trap_locations+1))
 }
-
 
 conversion <- Conversion(Setup = setup)
 
@@ -388,7 +391,6 @@ traps <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[2]]
 # conceptually easier, but note techincally is still refereing to positions in an array which does not have geographical directions  
 NtoSmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[3]] 
 EtoWmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[4]] 
-
 
 
 #====================================================================================== 
@@ -518,10 +520,34 @@ Outline <- function(Conversion){
   return(rows)
 }
 
-Plot <- function(Outline, Setup, Unique, Repeat, Conversion, Model){
+Plot <- function(Outline, Setup, Unique, Repeat, Model, Conversion){
   start <- Sys.time()
   plotholder <- list()
   for(E in 1:Setup[[3]]){
+    matrix <- matrix(NA,nrow=Conversion[[2]],ncol=Conversion[[1]])
+    for(Y in 1:length(Outline)){
+      for(X in 1:length(Outline[[Y]])){
+        newdata <- data.frame("LongX" = rep(Outline[[Y]][X],time=length(Unique)),
+                                 "LatY" = rep(Y,time=length(Unique)),
+                                 "Event" = rep(E,time=length(Unique)),
+                                 "Repeat" = Repeat[[2]][E,]) 
+        matrix[Y,Outline[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata)>=0.5,1,0))
+      }
+      if(Y==round(length(Outline)*0.25,0)){show("25%")}
+      if(Y==round(length(Outline)*0.25,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.5,0)){show("50%")}
+      if(Y==round(length(Outline)*0.5,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.75,0)){show("75%")}
+      if(Y==round(length(Outline)*0.75,0)){show(Sys.time())}
+    }
+    plotholder[[E]] <- matrix
+    show(E)
+  }
+  return(plotholder)
+}
+
+
+PlotSingular <- function(Outline, Setup, Unique, Repeat, Conversion, Model, E){
     matrix <- matrix(NA,nrow=Conversion[[2]],ncol=Conversion[[1]])
     for(Y in 1:length(Outline)){
       for(X in 1:length(Outline[[Y]])){
@@ -538,8 +564,5 @@ Plot <- function(Outline, Setup, Unique, Repeat, Conversion, Model){
       if(Y==round(length(Outline)*0.75,0)){show("75%")}
       if(Y==round(length(Outline)*0.75,0)){show(Sys.time())}
     }
-    plotholder[[E]] <- matrix
-    show(E)
-  }
-  return(plotholder)
+  return(matrix)
 }
