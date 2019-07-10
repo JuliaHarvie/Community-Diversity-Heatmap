@@ -12,14 +12,17 @@ Field_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_
 Trap_Coors <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW_coords_trap.csv"
 TSV <- "/Users/juliaharvie/Documents/Coding/Heatmap.Project/AGAW.tsv"
 
-setup <- Setup(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
-formatted <- Formatting_mBrave(File=as.data.frame(fread(TSV)),ID = "AGAW", Suffix_Symbol = ")", Slam_trap = T)
+setup <- SetupFun(Boarder_Coordinates = read.csv(Field_Coors), Trap_Coordinates = read.csv(Trap_Coors), Number_of_Sampling_Events = 9, Slam_trap = T)
+formatted <- Formatting_mBraveFun(File=as.data.frame(fread(TSV)),ID = "AGAW", Suffix_Symbol = ")", Slam_trap = T)
 #File can equal ouput of formatted or read in a csv with right layout
-data <- Data(File = formatted, Setup = setup)
-data <- Data(File = read.csv(), Setup = setup)
-conversion <- Conversion(Setup = setup)
-unique <- Unique(Data = data)
-masterframe <- MasterDataframe(Data=data,Unique=unique,Setup = setup,Conversion = conversion)
+data <- DataFun(File = formatted, Setup = setup)
+data <- DataFun(File = read.csv(), Setup = setup)
+conversion <- ConversionFun(Setup = setup)
+unique <- UniqueFun(Data = data)
+masterframe <- MasterDataframeFun  (Data=data,Unique=unique,Setup = setup,Conversion = conversion)
+#This is optional due to time constrictions
+masterframe2 <- RepeatFun(Unique = AGAWUnique,Dataframe = AGAWDataFrame,Setup = AGAWSetup,Formatted = AGAWFormatted)
+
 
 #
 #====================================================================================== 
@@ -33,7 +36,7 @@ masterframe <- MasterDataframe(Data=data,Unique=unique,Setup = setup,Conversion 
 
 ### Update so the Boarder_Coor and Trap_Coor are pulled from a single .csv
 
-Setup <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Events = NULL, Slam_trap = FALSE){
+SetupFun <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Events = NULL, Slam_trap = FALSE){
   ### Produces a warning if BC can not be read otherwises turns them into a vector ###
   if(!is.data.frame(Boarder_Coordinates) && !is.matrix(Boarder_Coordinates)){
     stop("Boarder Coordinates need to be stored as either a dataframe or a matrix.", call.= F)
@@ -79,7 +82,7 @@ Setup <- function(Boarder_Coordinates, Trap_Coordinates,  Number_of_Sampling_Eve
 # Ex.If a file contains the follow as runNames "L#17AGAS1-14W)CCDB-S5-0099)CBGMB-00047", "L#17AGAS1-14S)CCDB-S5-0099)CBGMB-00047", 
 # "L#17AGAS4-05E)CCDB-S5-0077)CBGMB-00034" ID would be set as "AGAS" and Suffix Symbol as ")". 
 
-Formatting_mBrave <- function(File, ID, Suffix_Symbol, Slam_trap = F) {
+Formatting_mBraveFun <- function(File, ID, Suffix_Symbol, Slam_trap = F) {
   if (!("runName" %in% names(File) && "bin_uri" %in% names (File))){
     stop("The correct fields have not been downloaded from mBrave", call. =  F)
   }
@@ -182,7 +185,7 @@ Formatting_mBrave <- function(File, ID, Suffix_Symbol, Slam_trap = F) {
 # The next step is to read in the sampling data and make sure it matches with paramters provided in set up. Use the function data to create the boject that holds 
 #all sample information in a format all further functions will use.
 
-Data <- function(File, Setup) {
+DataFun <- function(File, Setup) {
   if (!is.data.frame(File)){
     stop("Sampling data must be stored as a dataframe.", call. = F)
   }
@@ -207,7 +210,7 @@ Data <- function(File, Setup) {
 # The function will be used to convert sets of decimal degrees coordinates into a distance vector in future calculations.
 # The distance vectors will be in metres unless km is set to true, then switches to kilometres. 
 
-Distance <- function(y1,y2,x1,x2, km = F){
+DistanceFun <- function(y1,y2,x1,x2, km = F){
   varR <- 6371e3
   radians <- function(d) {
     d * pi / 180
@@ -233,7 +236,7 @@ Distance <- function(y1,y2,x1,x2, km = F){
 #
 # Convert coordinates into (X,Y) points that can be plotted onto a 2D graph therefor assigning 0,0 as the south west corner.
 
-Conversion <- function(Setup, Poles = F){
+ConversionFun <- function(Setup, Poles = F){
   ### Seperating the corners on the plot ###
   k <- 2
   xcorners <- c()
@@ -391,14 +394,14 @@ Conversion <- function(Setup, Poles = F){
 # Even though this technically is just creating one vector that will be incorrperated into a master dataframe later.
 # Going to keep it as its own function because this is an important list and might be nice to be able to produce it on its own. 
 
-Unique <- function(Data){
+UniqueFun <- function(Data){
   string <- c(NA)
   for(n in 1:length(Data)){
     string <- c(string,Data[[n]])
   }
   string <- string[-1]
   length <- c()
-  for(n in 1:length(data)){
+  for(n in 1:length(Data)){
     length[n] <- length(Data[[n]])
   }
   scanned <- c()
@@ -414,32 +417,75 @@ Unique <- function(Data){
 ## Function 7 - Master Dataframe
 #======================================================================================
 # 
-MasterDataframe <- function(Data,Unique,Setup,Conversion){
-  # remember to switch lower case back to upper case
+MasterDataframeFun <- function(Data,Unique,Setup,Conversion){
   Found <- c()
-  for (d in 1:length(Data)){
-    for(n in 1:length(unique)){
-    ## Need to fix this statement
-      Found <- ifelse(length(grep(unique[n],data[[d]]))>=1,1,0)
-    }
-    if(d == round(length(Data)*0.25,0)){show("25% formatted.")}
-    if(d == round(length(Data)*0.5,0)){show("50% formatted.")}
-    if(d == round(length(Data)*0.75,0)){show("75% formatted.")}
-    if(d == length(Data)){show("100% formatted")}
-  }
-  ID <- rep(unique,length(data))
   if(Setup[[5]]){
-    Bottle <- rep(rep(c("N","E","S","W"),each = length(Unique)),times=(length(Data)/4))
-    Event <- rep(c(1:setup[[3]]),each = ((length(unique)*setup[[4]]*4)))
-    LongX <- rep(rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)], each=length(Unique)*4),times=Setup[[3]])
-    LatY <- rep(rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)], each=length(Unique)*4),times=Setup[[3]])
-    Trap <- rep(rep(c(1:Setup[[4]]), each=length(Unique)*4),times=Setup[[3]])
-    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Bottle" = Bottle, "Found" = c(Found)))
+    k <- 1
+    for (d in seq(1,length(Data),by=4)){
+      for(n in 1:length(Unique)){
+        Found[(k-1)*length(Unique)+n] <- ifelse(length(grep(Unique[n],c(Data[[d]], Data[[d+1]], Data[[d+2]], Data[[d+3]])))>=1,1,0)
+      }
+      k <- k+1
+      if(k == round(length(Data)/4*0.25,0)){show("25% formatted.")}
+      if(k == round(length(Data)/4*0.5,0)){show("50% formatted.")}
+      if(k == round(length(Data)/4*0.75,0)){show("75% formatted.")}
+      if(k == length(Data)/4){show("100% formatted")}
+      ID <- rep(Unique,length(Data)/4)
+    }
   } else {
-    Event <- rep(c(1:Setup[[3]]),each = ((length(Unique)*Setup[[4]])))
-    LongX <- rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)],times=Setup[[3]])
-    LatY <- rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)],times=Setup[[3]])
-    Trap <- rep(c(1:Setup[[4]]),times=Setup[[3]]) 
-    return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Found" = c(Found)))
+    for (d in 1:length(Data)){
+      for(n in 1:length(Unique)){
+        Found[(d-1)*length(Unique)+n] <- ifelse(length(grep(Unique[n],Data[[d]]))>=1,1,0)
+      }
+      if(d == round(length(Data)*0.25,0)){show("25% formatted.")}
+      if(d == round(length(Data)*0.5,0)){show("50% formatted.")}
+      if(d == round(length(Data)*0.75,0)){show("75% formatted.")}
+      if(d == length(Data)){show("100% formatted")}
+    }
+    ID <- rep(Unique,length(Data))
   }
+  Event <- rep(c(1:Setup[[3]]),each = ((length(Unique)*Setup[[4]])))
+  LongX <- rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)], each=length(Unique),times=Setup[[3]])
+  LatY <- rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)],each=length(Unique),times=Setup[[3]])
+  Trap <- rep(c(1:Setup[[4]]),each=length(Unique),times=Setup[[3]]) 
+  return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Found" = c(Found)))
+}
+
+#====================================================================================== 
+## Function 8 - Repeat
+#======================================================================================
+#
+# Like Unique, even though Repeat is techinically a part of Master Dataframe, will be efined by its own function. Mostly because the 
+# vector Repeat takes a long time to generate so even though it does offer useful information, one may chose to leave it out of the analysis. 
+#
+RepeatFun <- function(Dataframe,Setup){
+  ifelse(Setup[[5]],Unique <- Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]/4),1],Unique <- Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
+  Unique <- as.character(Unique)
+  RepMat <- matrix(0,Setup[[3]],length(Unique))
+  for (E in 1:Setup[[3]]){
+    if(Setup[[5]]){
+      for(U in 1:length(Unique)){
+        for(t in 1:5){
+          sum <- sum(Dataframe[seq(((E-1)*(nrow(Dataframe)/Setup[[3]]))+U,length.out = (4*Setup[[4]]),by=length(Unique)),][seq(to=(t*4),length.out = 4),]$Found)
+          if(sum>=1){
+            RepMat[E,U] <- RepMat[E,U]+1
+          }
+        }
+      }
+    } else {
+      for(U in 1:length(Unique)){
+        sum <- sum(DataFrame[seq(((E-1)*(nrow(DataFrame)/Setup[[3]]))+U,length.out = 5,by=length(Unique)),]$Found)
+        if(sum>=1){
+          RepMat[E,U] <- sum
+        }
+      }
+    }
+    show(E)
+  }
+  Repeat <- c()
+  for(n in 1:Setup[[3]]){
+    Repeat <- c(Repeat, rep(RepMat[n,],times=(length(Data)/Setup[[3]])))
+  }
+  List <- list(Repeat,RepMat)
+  return(List)
 }
