@@ -448,7 +448,9 @@ MasterDataframeFun <- function(Data,Unique,Setup,Conversion){
   LongX <- rep(Conversion[[2]][seq(1,length(Conversion[[2]])-1,by=2)], each=length(Unique),times=Setup[[3]])
   LatY <- rep(Conversion[[2]][seq(2,length(Conversion[[2]]),by=2)],each=length(Unique),times=Setup[[3]])
   Trap <- rep(c(1:Setup[[4]]),each=length(Unique),times=Setup[[3]]) 
-  return(data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Found" = c(Found)))
+  Repeat <- rep(NA,times=length(ID))
+  Frame <- data.frame("ID" = c(ID), "LongX" = c(LongX), "LatY" = c(LatY), "Event" = c(Event), "Trap" = c(Trap), "Repeat" = c(Repeat), "Found" = c(Found))
+  return(Frame)
 }
 
 #====================================================================================== 
@@ -488,4 +490,20 @@ RepeatFun <- function(Dataframe,Setup){
   }
   List <- list(Repeat,RepMat)
   return(List)
+}
+
+# if this function is good replace other repeat with this
+RepeatBetterFun <- function(Dataframe,Setup){
+  Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
+  Grouping <- seq(0,by=length(Unique),length.out = Setup[[4]])
+  Check <- function(x){
+    y <- which(Unique==Dataframe$ID[x])
+    sum(Dataframe$Found[(Grouping+(length(Unique)*(M-1)))+y])
+  }  
+  sort <- matrix(1:nrow(Dataframe),ncol=Setup[[3]]) 
+  M <- 2
+  for(M in 1:Setup[[3]]){
+    Dataframe$Repeat[sort[,M]] <- sapply(sort[,M],Check)
+  }  
+  return(Dataframe)
 }
