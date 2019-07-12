@@ -4,6 +4,7 @@
 #
 library(stringr) 
 library(data.table)
+library(caret) 
 #
 # Below are the lines of code requirred to run the script start to finish assuming all the functions have alreayd been read in
 #
@@ -20,10 +21,21 @@ data <- DataFun(File = read.csv(), Setup = setup)
 conversion <- ConversionFun(Setup = setup)
 unique <- UniqueFun(Data = data)
 masterframe <- MasterDataframeFun  (Data=data,Unique=unique,Setup = setup,Conversion = conversion)
-#This is optional due to time constrictions
-masterframe2 <- RepeatFun(Unique = AGAWUnique,Dataframe = AGAWDataFrame,Setup = AGAWSetup,Formatted = AGAWFormatted)
-
-
+masterframe2 <- RepeatFun(Dataframe = masterframe,Setup = setup)
+downsampled <- DownSampelFun(Dataframe = masterframe2, p=0.7)[[1]]
+# 4 recommened models for an overall comparisson 
+downsampled$Found <-as.numeric(downsampled$Found)
+LinearMin <- lm(Found~LongX+LatY, data=downsampled)
+LinearMax <- lm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), data= downsampled)
+downsampled$Found <-as.factor(downsampled$Found)
+BinomialMin <- glm(Found~ LongX+LatY, family = binomial, data = downsampled)
+BinomialMax <- glm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), family = binomial, data =downsampled)
+show(AccuracyFun(Model=LinearMin,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
+show(AccuracyFun(Model=LinearMax,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
+show(AccuracyFun(Model=BinomialMin,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
+show(AccuracyFun(Model=BinomialMax,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
+boarder <- BoarderFun(Conversion = conversion)
+plot <- Plot(Boarder = boarder, Setup = setup, Dataframe = masterframe2, Model = BinomialMax,Conversion = conversion)
 #
 #====================================================================================== 
 ## Function 1 - Setup
@@ -210,7 +222,7 @@ DataFun <- function(File, Setup) {
 # The function will be used to convert sets of decimal degrees coordinates into a distance vector in future calculations.
 # The distance vectors will be in metres unless km is set to true, then switches to kilometres. 
 
-DistanceFun <- function(y1,y2,x1,x2, km = F){
+Distance <- function(y1,y2,x1,x2, km = F){
   varR <- 6371e3
   radians <- function(d) {
     d * pi / 180
@@ -457,43 +469,8 @@ MasterDataframeFun <- function(Data,Unique,Setup,Conversion){
 ## Function 8 - Repeat
 #======================================================================================
 #
-# Like Unique, even though Repeat is techinically a part of Master Dataframe, will be efined by its own function. Mostly because the 
-# vector Repeat takes a long time to generate so even though it does offer useful information, one may chose to leave it out of the analysis. 
-#
-RepeatFun <- function(Dataframe,Setup){
-  ifelse(Setup[[5]],Unique <- Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]/4),1],Unique <- Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
-  Unique <- as.character(Unique)
-  RepMat <- matrix(0,Setup[[3]],length(Unique))
-  for (E in 1:Setup[[3]]){
-    if(Setup[[5]]){
-      for(U in 1:length(Unique)){
-        for(t in 1:5){
-          sum <- sum(Dataframe[seq(((E-1)*(nrow(Dataframe)/Setup[[3]]))+U,length.out = (4*Setup[[4]]),by=length(Unique)),][seq(to=(t*4),length.out = 4),]$Found)
-          if(sum>=1){
-            RepMat[E,U] <- RepMat[E,U]+1
-          }
-        }
-      }
-    } else {
-      for(U in 1:length(Unique)){
-        sum <- sum(DataFrame[seq(((E-1)*(nrow(DataFrame)/Setup[[3]]))+U,length.out = 5,by=length(Unique)),]$Found)
-        if(sum>=1){
-          RepMat[E,U] <- sum
-        }
-      }
-    }
-    show(E)
-  }
-  Repeat <- c()
-  for(n in 1:Setup[[3]]){
-    Repeat <- c(Repeat, rep(RepMat[n,],times=(length(Data)/Setup[[3]])))
-  }
-  List <- list(Repeat,RepMat)
-  return(List)
-}
 
-# if this function is good replace other repeat with this
-RepeatBetterFun <- function(Dataframe,Setup){
+RepeatFun <- function(Dataframe,Setup){
   Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
   Grouping <- seq(0,by=length(Unique),length.out = Setup[[4]])
   Check <- function(x){
@@ -506,4 +483,116 @@ RepeatBetterFun <- function(Dataframe,Setup){
     Dataframe$Repeat[sort[,M]] <- sapply(sort[,M],Check)
   }  
   return(Dataframe)
+}
+
+#====================================================================================== 
+## Function 8 - Down Sampling
+#======================================================================================
+#
+#This function will export a lit. The first element of the list will be the Downsampled dataset. Second and third
+# will be training and testing datasets respectfully so the user will have access to them.
+#
+DownSampelFun <- function(Dataframe,p){
+  DataPartition <- createDataPartition(Dataframe$Found, p=p, list = F)
+  TrainingData <- Dataframe[DataPartition, ]
+  TestingData <- Dataframe[-DataPartition, ]
+  TrainingData$Found <- as.factor(TrainingData$Found)
+  DownSampled <- downSample(x = TrainingData[,1:(ncol(Dataframe)-1)],y = TrainingData$Found, yname="Found")
+  Export <- list(DownSampled,TrainingData,TestingData)
+  return(Export)
+}
+  
+
+DownSampled <- downSample(x = TrainingData[,1:7],y = TrainingData$Found, yname="Found")
+
+#====================================================================================== 
+## Function 9 - Accuracy Testing
+#======================================================================================
+#
+AccuracyFun <- function(Model,Testdata){
+  pre <- predict(Model, newdata = Testdata, type = "response")
+  out <- ifelse(pre>=0.5,1,0)
+  return(mean(out == Testdata$Found))
+}
+
+#====================================================================================== 
+## Function 10 - Boarder List
+#======================================================================================
+#
+
+BoarderFun <- function(Conversion){
+  Outline <- Conversion[[1]] + 1
+  county <- c(seq(2,length(Outline),by=2),2)
+  countx <- c(seq(1,length(Outline),by=2),1)
+  ally <- c()
+  allx <- c()
+  for(k in 1:(length(county)-1)){
+    ally <- c(ally,Outline[county[k]]:Outline[county[k+1]])
+    allx <- c(allx,seq(Outline[countx[k]],Outline[countx[k+1]],length.out = length(Outline[county[k]]:Outline[county[k+1]])))
+  }
+  allx <- round(allx,0)
+  building <- list()
+  building[[max(ally)]] <- NA
+  for(n in 1:length(ally)){
+    building[[ally[n]]] <- c(building[[ally[n]]],allx[n])
+  }
+  building[[max(ally)]] <- building[[max(ally)]][-1]
+  for(n in 1:length(building)){
+    if(sum(duplicated(building[[n]]))>=1){
+      building[[n]] <- building[[n]][-which(duplicated(building[[n]]))]
+    }
+    building[[n]] <- sort(building[[n]])
+  }
+  rows <- list()
+  rows[[length(building)+1]] <- NA
+  for(n in 1:length(building)){
+    if(length(building[[n]])==1){
+      rows[[n]] <- building[[n]]
+    } else if (length(building[[n]])==2){
+      rows[[n]] <- seq(building[[n]][1],building[[n]][2],by = 1)
+    } else {
+      for(c in 1:(length(building[[n]])/2)){
+        rows[[n]] <- c(rows[[n]],
+                       seq(building[[n]][seq(1,length(building[[n]])-1,by=2)[c]],
+                           building[[n]][seq(2,length(building[[n]]),by=2)[c]],
+                           by=1))
+      }
+    }
+  }
+  rows[[length(building)+1]] <- NULL
+  return(rows)
+}
+
+#====================================================================================== 
+## Function 11 - Plot maker
+#======================================================================================
+#
+
+Plot <- function(Boarder, Setup, Dataframe, Model, Conversion){
+  start <- Sys.time()
+  plotholder <- list()
+  Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
+  Repeat <- Dataframe$Repeat[1:length(Unique)]
+  for(E in 1:Setup[[3]]){
+    #need to pull DY and DX
+    matrix <- matrix(NA,nrow=length(Boarder),ncol=max(unlist(Boarder)))
+    for(Y in 1:length(Outline)){
+      for(X in 1:length(Outline[[Y]])){
+        newdata <- data.frame("LongX" = rep(Outline[[Y]][X],time=length(Unique)),
+                              "LatY" = rep(Y,time=length(Unique)),
+                              "Event" = rep(E,time=length(Unique)),
+                              "Repeat" = Repeat) 
+        matrix[Y,Outline[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata)>=0.5,1,0))
+      }
+      if(Y==round(length(Outline)*0.25,0)){show("25%")}
+      if(Y==round(length(Outline)*0.25,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.5,0)){show("50%")}
+      if(Y==round(length(Outline)*0.5,0)){show(Sys.time())}
+      if(Y==round(length(Outline)*0.75,0)){show("75%")}
+      if(Y==round(length(Outline)*0.75,0)){show(Sys.time())}
+    }
+    plotholder[[E]] <- matrix
+    show(E)
+  }
+  return(plotholder)
 }
