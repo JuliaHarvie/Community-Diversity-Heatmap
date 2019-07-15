@@ -567,32 +567,26 @@ BoarderFun <- function(Conversion){
 ## Function 11 - Plot maker
 #======================================================================================
 #
-
-Plot <- function(Boarder, Setup, Dataframe, Model, Conversion){
-  start <- Sys.time()
+Y <- 1
+X <- 1
+E <- 1
+Plot <- function(Boarder, Setup, Dataframe, Model){
   plotholder <- list()
   Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
   Repeat <- Dataframe$Repeat[1:length(Unique)]
   for(E in 1:Setup[[3]]){
     #need to pull DY and DX
     matrix <- matrix(NA,nrow=length(Boarder),ncol=max(unlist(Boarder)))
-    for(Y in 1:length(Outline)){
-      for(X in 1:length(Outline[[Y]])){
-        newdata <- data.frame("LongX" = rep(Outline[[Y]][X],time=length(Unique)),
+    for(Y in 1:length(Boarder)){
+      for(X in 1:length(Boarder[[Y]])){
+        newdata <- data.frame("LongX" = rep(Boarder[[Y]][X],time=length(Unique)),
                               "LatY" = rep(Y,time=length(Unique)),
                               "Event" = rep(E,time=length(Unique)),
                               "Repeat" = Repeat) 
-        matrix[Y,Outline[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata)>=0.5,1,0))
+        matrix[Y,Boarder[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata,type="response")>=0.5,1,0))
       }
-      if(Y==round(length(Outline)*0.25,0)){show("25%")}
-      if(Y==round(length(Outline)*0.25,0)){show(Sys.time())}
-      if(Y==round(length(Outline)*0.5,0)){show("50%")}
-      if(Y==round(length(Outline)*0.5,0)){show(Sys.time())}
-      if(Y==round(length(Outline)*0.75,0)){show("75%")}
-      if(Y==round(length(Outline)*0.75,0)){show(Sys.time())}
     }
     plotholder[[E]] <- matrix
-    show(E)
   }
   return(plotholder)
 }
