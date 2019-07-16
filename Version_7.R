@@ -569,7 +569,7 @@ BoarderFun <- function(Conversion){
 #
 Y <- 1
 X <- 1
-E <- 1
+E <- 2
 Plot <- function(Boarder, Setup, Dataframe, Model){
   plotholder <- list()
   Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
@@ -585,6 +585,7 @@ Plot <- function(Boarder, Setup, Dataframe, Model){
                               "Repeat" = Repeat) 
         matrix[Y,Boarder[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata,type="response")>=0.5,1,0))
       }
+      show(Y)
     }
     plotholder[[E]] <- matrix
   }

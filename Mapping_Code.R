@@ -1,5 +1,5 @@
-DY <- AGACConversion[[2]] 
-DX <- AGACConversion[[1]]
+DY <- length(Boarder)
+DX <- max(unlist(Boarder))
 
 ORIGscipen <- getOption("scipen") 
 options(scipen=10)
@@ -9,9 +9,9 @@ ramp <- data.frame("ID"=rev(seq(scale[length(scale)], scale[1], 1)),
                    stringsAsFactors=F)
 ramp <- data.frame("ID"=rev(seq(0,1000,50)), "col"=mycol(21)[1:21], stringsAsFactors=F)
 
-ramp <- data.frame("ID"=seq(0,1400,10), "col"= mycol(141)[1:141], stringsAsFactors=F)
+ramp <- data.frame("ID"=seq(0,500,10), "col"= mycol(51)[1:51], stringsAsFactors=F)
 
-  data <- Active
+  data <- plotholder[[2]]
   #creates the plot, must be rerun every run through 
   par(mar=c(0,0,0,0))
   plot(NULL, ylim=c(0, (DY+60)), xlim=c(0, DX), xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
