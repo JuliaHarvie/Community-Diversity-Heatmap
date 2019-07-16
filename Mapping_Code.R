@@ -1,62 +1,53 @@
-{file=file.choose()
-out="AGEA_week4_version5_test.pdf"
-title <- "Week 4 (version5)"
-North = 205 #how eastnorth corner is
-East = 212 #how north east corner is
-South = 106 #how eastsouth corner is
-West = 115 #how north west corner is
+DY <- AGACConversion[[2]] 
+DX <- AGACConversion[[1]]
 
-col=c("red", "white")
-ORIGscipen <- getOption("scipen")
+ORIGscipen <- getOption("scipen") 
 options(scipen=10)
+mycol <- colorRampPalette(c("green","yellow","orange","red"))
+ramp <- data.frame("ID"=rev(seq(scale[length(scale)], scale[1], 1)), 
+                   "col"=mycol(length(seq(scale[length(scale)], scale[1], 1)))[1:length(seq(scale[length(scale)], scale[1], 1))], 
+                   stringsAsFactors=F)
+ramp <- data.frame("ID"=rev(seq(0,1000,50)), "col"=mycol(21)[1:21], stringsAsFactors=F)
 
-if(is.character(file)){
-  data <- read.csv(file, stringsAsFactors=F)
-  row.names(data) <- data[,1]
-  data <- data[,-c(1)]
-} else {data <- file}
+ramp <- data.frame("ID"=seq(0,1400,10), "col"= mycol(141)[1:141], stringsAsFactors=F)
 
-if(out!=""){
-  pdf(out)
-}
-
-
-mycol <- colorRampPalette(col)
-ramp <- data.frame("ID"=rev(seq(50, 240, 1)), "col"=mycol(191)[1:191], stringsAsFactors=F)
-
-par(mar=c(0,0,0,0))
-plot(NULL, ylim=c(0, (nrow(data)+10)), xlim=c(0, ncol(data)), xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
-#points(100,100, pch=16, cex=7)
-
-for (m in 1:ncol(data)){
-  #text(m, nrow(data)+2, m, srt=90, adj=0, cex =0.4)
-  for(i in 1:nrow(data)){
-    wichColor <- which(data[i,m]>ramp$ID)[1]
-    rect(m-0.5, i-0.5, m+0.5, i+0.5, col=ramp$col[wichColor], border=F)
+  data <- Active
+  #creates the plot, must be rerun every run through 
+  par(mar=c(0,0,0,0))
+  plot(NULL, ylim=c(0, (DY+60)), xlim=c(0, DX), xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
+  for (m in 1:DX){
+    for(i in 1:DY){
+      if (is.na(data[i,m])){
+        NULL
+      } else {
+        wichColor <- max(which(data[i,m]>ramp$ID))
+        colour <- paste(ramp$col[wichColor])
+        rect(m-0.5, i-0.5, m+0.5, i+0.5, col=colour, border=colour)
+      }
+    }
   }
-}
+  
+#this is the part that must get repeated every time
+  L <- round(DX * .25/length(ramp$col),2)
+  for(i in 1:length(ramp$col)){
+    rect(0.4+i*L, DY+41, (0.4+L)+i*L, DY+45, col=paste(ramp$col[i]), border=paste(ramp$col[i]))
+  }
+  scale <-seq(0,1400,100) 
+  lines <- seq(0.5,length(ramp$col)*L, length.out = length(scale))
+  k <- 1
+  for (i in lines){
+    text(i, DY+40, labels=scale[k], srt=90, adj=1, cex=0.6)
+    lines(x = c(i,i), y = c(DY+41.5, DY+43.5))
+    k <- k+1
+  }
+  text((DX/2)-50, DY+9, labels=title, adj=0, cex=1)
+  #ending
+  if(out!=""){
+    dev.off()
+  }
+  show(paste("round", W, "completed")) 
 
-polygon(c(ncol(data)+0.5,-0.5,-0.5,ncol(data)+0.5,ncol(data)+0.5,North,ncol(data),South,0,North),
-        c(nrow(data)+0.5, nrow(data)+0.5,-0.5,-0.5,nrow(data)+0.5,nrow(data),East,0,West,nrow(data)), col="white", border="white") 
-for(i in 1:121){
-  rect(0.45+i*0.05, nrow(data)+10, 0.5+i*0.05, nrow(data)+12, col=ramp$col[i], border=F)
-}
-
-
-MYlabels <- c(240, 50)
-
-k <- 1
-
-for (i in c(0.5, 8.5)){
-  text(i, nrow(data)+9, labels=MYlabels[k], srt=90, adj=1, cex=0.9)
-  k <- k+1
-}
-text((ncol(data)/2)-50, nrow(data)+9, labels=title, adj=0, cex=1)
-
-
-if(out!=""){
-  dev.off()
-}
-}
-
-
+  
+png("test.png")
+plot(c(1:10),c(21:30))
+dev.off()
