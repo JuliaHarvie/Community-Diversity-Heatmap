@@ -40,7 +40,7 @@ ramp <- data.frame("ID"=seq(0,500,10), "col"= mycol(51)[1:51], stringsAsFactors=
     lines(x = c(i,i), y = c(DY+41.5, DY+43.5))
     k <- k+1
   }
-  text((DX/2)-50, DY+9, labels=title, adj=0, cex=1)
+  text((ncol(data)/2)-50, DY+9, labels=c("TITLE"), adj=0, cex=1)
   #ending
   if(out!=""){
     dev.off()

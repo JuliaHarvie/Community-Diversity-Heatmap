@@ -35,8 +35,9 @@ show(AccuracyFun(Model=LinearMax,Testdata = DownSampelFun(Dataframe = masterfram
 show(AccuracyFun(Model=BinomialMin,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
 show(AccuracyFun(Model=BinomialMax,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
 boarder <- BoarderFun(Conversion = conversion)
-plot <- Plot(Boarder = boarder, Setup = setup, Dataframe = masterframe2, Model = BinomialMax,Conversion = conversion)
-#
+plot <- PlotFUN(Boarder = boarder,Setup = setup, Dataframe = masterframe2, Model=BinomialMax, Subset = c(1,2))
+PDFOutFun(Plots=plot,Title = "AGAW Plots")
+
 #====================================================================================== 
 ## Function 1 - Setup
 #======================================================================================
@@ -567,15 +568,13 @@ BoarderFun <- function(Conversion){
 ## Function 11 - Plot maker
 #======================================================================================
 #
-Y <- 1
-X <- 1
-E <- 2
-Plot <- function(Boarder, Setup, Dataframe, Model){
+
+PlotFUN <- function(Boarder, Setup, Dataframe, Model, Subset=NA){
   plotholder <- list()
   Unique <- as.character(Dataframe[1:(nrow(Dataframe)/Setup[[3]]/Setup[[4]]),1])
   Repeat <- Dataframe$Repeat[1:length(Unique)]
-  for(E in 1:Setup[[3]]){
-    #need to pull DY and DX
+  if(is.na(Subset)){ Subset <- 1:Setup[[3]] } 
+  for(E in Subset){
     matrix <- matrix(NA,nrow=length(Boarder),ncol=max(unlist(Boarder)))
     for(Y in 1:length(Boarder)){
       for(X in 1:length(Boarder[[Y]])){
@@ -590,4 +589,54 @@ Plot <- function(Boarder, Setup, Dataframe, Model){
     plotholder[[E]] <- matrix
   }
   return(plotholder)
+}
+
+#====================================================================================== 
+## Function 12 - PDFOut
+#======================================================================================
+#
+
+PDFOutFun <- function(Plots,Colours = c("green","yellow","orange","red"),Gradient.Interval=10,Legend=T,Scale.Interval=100,Title=NA) {
+  mycol <- colorRampPalette(Colours)
+  top <- max(unlist(Plots)[!is.na(unlist(Plots))])
+  ID <- seq(0,top,Gradient.Interval)
+  if(ID[length(ID)]<top){ID <-c(ID,(ID[length(ID)]+Gradient.Interval))}
+  ramp <- data.frame("ID"=ID, "col"= mycol(length(ID))[1:length(ID)], stringsAsFactors=F)
+  for(n in 1:length(Plots)){
+    pdf(file=paste("Output",n,".pdf",sep=""))
+    data <- Plots[[n]]
+    par(mar=c(0,0,0,0))
+    plot(NULL, ylim=c(0, (nrow(data)+60)), xlim=c(0, ncol(data)), xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
+    for (m in 1:ncol(data)){
+      for(i in 1:nrow(data)){
+        if (is.na(data[i,m])){
+          NULL
+        } else {
+          wichColor <- max(which(data[i,m]>ramp$ID))
+          colour <- paste(ramp$col[wichColor])
+          rect(m-0.5, i-0.5, m+0.5, i+0.5, col=colour, border=colour)
+        }
+      }
+    }
+    LH <- round(ncol(data)/200,2)
+    LV <- round(nrow(data)/200,2)
+   if(Legend){
+      for(i in 1:length(ramp$col)){
+        rect(0.4+i*LH, (nrow(data)+10*LV), (0.4+L)+i*LH, (nrow(data)+11*LV), col=paste(ramp$col[i]), border=paste(ramp$col[i]))
+      }
+      scale <-seq(0,ID[length(ID)],Scale.Interval)
+      lines <- seq((0.4+LH),((0.4+LH)+length(ramp$col)*LH), length.out = length(scale))
+      k <- 1
+      for (i in lines){
+        text(i, (nrow(data)+9.5*LV), labels=scale[k], srt=90, adj=1, cex=(0.2*LV))
+        lines(x = c(i,i), y = c((nrow(data)+10*LV), (nrow(data)+11*LV)))
+        k <- k+1
+      }
+      if(!is.na(Title)){
+        title <- paste(Title,", ",n,"/",length(Plots),sep="")
+      }
+      text(x = (ncol(data)/2), y = (nrow(data)+13*LV), labels=c(title), adj=c(0.5,0), cex=((0.25*LV)))
+      dev.off()
+    }
+  }
 }
