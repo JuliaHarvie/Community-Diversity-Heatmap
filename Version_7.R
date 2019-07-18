@@ -224,7 +224,7 @@ DataFun <- function(File, Setup) {
 # The function will be used to convert sets of decimal degrees coordinates into a distance vector in future calculations.
 # The distance vectors will be in metres unless km is set to true, then switches to kilometres. 
 
-Distance <- function(y1,y2,x1,x2, km = F){
+DistanceFun <- function(y1,y2,x1,x2, km = F){
   varR <- 6371e3
   radians <- function(d) {
     d * pi / 180
@@ -250,7 +250,7 @@ Distance <- function(y1,y2,x1,x2, km = F){
 #
 # Convert coordinates into (X,Y) points that can be plotted onto a 2D graph therefor assigning 0,0 as the south west corner.
 
-ConversionFun <- function(Setup, Poles = F){
+ConversionFun <- function(Setup,km = F, Poles = F){
   ### Seperating the corners on the plot ###
   k <- 2
   xcorners <- c()
@@ -272,13 +272,13 @@ ConversionFun <- function(Setup, Poles = F){
       ### Calculates length of x axis (starts at LMX goes to RMX along the line of BMY) ###
       LMX <- 180
       BMY <- min(ycorners)
-      DX <- round(Distance(BMY,BMY,180,0),0)
+      DX <- round(Distance(BMY,BMY,180,0,km=km),0)
       ### Calculates length of y axis (starts at BMY goes to TMY along the line of LMX) ###     
       DY <- DX
     } else {
       LMX <- 180
       BMY <- max(ycorners)     
-      DX <- round(Distance(BMY,BMY,180,0),0)
+      DX <- round(Distance(BMY,BMY,180,0,km=km),0)
       DY <- DX
     } 
     ### Using this solution to solve for the poles is computationally intensive but because the liklihood of this senerio happening is low. Not worth 
@@ -287,14 +287,14 @@ ConversionFun <- function(Setup, Poles = F){
     ### Calculates length of x axis (starts at LMX goes to RMX along the line of BMY) ###
     BMY <- min(ycorners)
     LMX <- min(xcorners)
-    DX <- round(Distance(min(ycorners),min(ycorners),min(xcorners),max(xcorners)),0)
+    DX <- round(Distance(min(ycorners),min(ycorners),min(xcorners),max(xcorners),km=km),0)
     ### Calculates length of y axis (starts at BMY goes to TMY along the line of LMX) ###
-    DY <- round(Distance(min(ycorners),max(ycorners),min(xcorners),min(xcorners)),0)
+    DY <- round(Distance(min(ycorners),max(ycorners),min(xcorners),min(xcorners),km=km),0)
   }
   ### Now need to convert other corners into distances relative to the bottom left corner of the newly defined plot  
   plot_outline <- c()
   for (k in 1:length(xcorners)){
-    plot_outline <- c(plot_outline, round(Distance(BMY,BMY,LMX,xcorners[k]),0),round(Distance(BMY,ycorners[k],LMX,LMX),0))
+    plot_outline <- c(plot_outline, round(Distance(BMY,BMY,LMX,xcorners[k],km=km),0),round(Distance(BMY,ycorners[k],LMX,LMX,km=km),0))
   }
   k <- 2
   xcorners <- c()
@@ -310,7 +310,7 @@ ConversionFun <- function(Setup, Poles = F){
   }
   trap_locations <- c()
   for (k in 1:length(xcorners)){
-    trap_locations <- c(trap_locations, round(Distance(BMY,BMY,LMX,xcorners[k]),0),round(Distance(BMY,ycorners[k],LMX,LMX),0))
+    trap_locations <- c(trap_locations, round(Distance(BMY,BMY,LMX,xcorners[k],km=km),0),round(Distance(BMY,ycorners[k],LMX,LMX,km=km),0))
   }
   return(list(plot_outline,trap_locations))
 }
@@ -409,22 +409,7 @@ ConversionFun <- function(Setup, Poles = F){
 # Going to keep it as its own function because this is an important list and might be nice to be able to produce it on its own. 
 
 UniqueFun <- function(Data){
-  string <- c(NA)
-  for(n in 1:length(Data)){
-    string <- c(string,Data[[n]])
-  }
-  string <- string[-1]
-  length <- c()
-  for(n in 1:length(Data)){
-    length[n] <- length(Data[[n]])
-  }
-  scanned <- c()
-  for(n in 1:length(string)){
-    if(str_detect(string[n],"[:alpha:]")){
-      scanned <- c(scanned,string[n])
-    }
-  }
-  return(unique(scanned))
+  unique(unlist(Data))
 }
 
 #====================================================================================== 
