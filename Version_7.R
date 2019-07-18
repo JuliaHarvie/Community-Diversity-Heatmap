@@ -211,6 +211,7 @@ DataFun <- function(File, Setup) {
   for(n in 1:ncol(File)){
     trap[[n]] <- (File[,n])
     trap[[n]] <- as.character(trap[[n]])
+    trap[[n]] <- ifelse(trap[[n]]=="",NA,trap[[n]])
     trap[[n]] <- trap[[n]][which(!is.na(trap[[n]]))]
   }
   return(trap)
