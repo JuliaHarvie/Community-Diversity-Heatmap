@@ -224,7 +224,7 @@ DataFun <- function(File, Setup) {
 # The function will be used to convert sets of decimal degrees coordinates into a distance vector in future calculations.
 # The distance vectors will be in metres unless km is set to true, then switches to kilometres. 
 
-DistanceFun <- function(y1,y2,x1,x2, km = F){
+Distance <- function(y1,y2,x1,x2, km = F){
   varR <- 6371e3
   radians <- function(d) {
     d * pi / 180
@@ -419,27 +419,29 @@ UniqueFun <- function(Data){
 MasterDataframeFun <- function(Data,Unique,Setup,Conversion){
   Found <- c()
   if(Setup[[5]]){
+    total <- length(Data)*length(Unique)
     k <- 1
     for (d in seq(1,length(Data),by=4)){
       for(n in 1:length(Unique)){
         Found[(k-1)*length(Unique)+n] <- ifelse(length(grep(Unique[n],c(Data[[d]], Data[[d+1]], Data[[d+2]], Data[[d+3]])))>=1,1,0)
+        if(length(Found) == round(total/4*0.25,0)){show("25% formatted.")}
+        if(length(Found) == round(total/4*0.5,0)){show("50% formatted.")}
+        if(length(Found) == round(total/4*0.75,0)){show("75% formatted.")}
+        if(length(Found) == total/4){show("100% formatted")}
+        ID <- rep(Unique,length(Data)/4)
       }
       k <- k+1
-      if(k == round(length(Data)/4*0.25,0)){show("25% formatted.")}
-      if(k == round(length(Data)/4*0.5,0)){show("50% formatted.")}
-      if(k == round(length(Data)/4*0.75,0)){show("75% formatted.")}
-      if(k == length(Data)/4){show("100% formatted")}
-      ID <- rep(Unique,length(Data)/4)
     }
-  } else {
+   } else {
+    total <- length(Data)*length(Unique)
     for (d in 1:length(Data)){
       for(n in 1:length(Unique)){
         Found[(d-1)*length(Unique)+n] <- ifelse(length(grep(Unique[n],Data[[d]]))>=1,1,0)
+        if(length(Found) == round(total*0.25,0)){show("25% formatted.")}
+        if(length(Found) == round(total*0.5,0)){show("50% formatted.")}
+        if(length(Found) == round(total*0.75,0)){show("75% formatted.")}
+        if(length(Found) == total){show("100% formatted")}
       }
-      if(d == round(length(Data)*0.25,0)){show("25% formatted.")}
-      if(d == round(length(Data)*0.5,0)){show("50% formatted.")}
-      if(d == round(length(Data)*0.75,0)){show("75% formatted.")}
-      if(d == length(Data)){show("100% formatted")}
     }
     ID <- rep(Unique,length(Data))
   }
@@ -525,8 +527,12 @@ BoarderFun <- function(Conversion){
   }
   building[[max(ally)]] <- building[[max(ally)]][-1]
   for(n in 1:length(building)){
+    if(sum(duplicated(building[[n]]))>=1 & length(building[[n]])==2){
+      building[[n]] <- building[[n]][1]
+    }  
     if(sum(duplicated(building[[n]]))>=1){
-      building[[n]] <- building[[n]][-which(duplicated(building[[n]]))]
+      dup <- building[[n]][which(duplicated(building[[n]]))]
+      building[[n]] <- building[[n]][-which(building[[n]]==dup)]
     }
     building[[n]] <- sort(building[[n]])
   }
@@ -608,7 +614,7 @@ PDFOutFun <- function(Plots,Colours = c("green","yellow","orange","red"),Gradien
     LV <- round(nrow(data)/200,2)
    if(Legend){
       for(i in 1:length(ramp$col)){
-        rect(0.4+i*LH, (nrow(data)+10*LV), (0.4+L)+i*LH, (nrow(data)+11*LV), col=paste(ramp$col[i]), border=paste(ramp$col[i]))
+        rect(0.4+i*LH, (nrow(data)+10*LV), (0.4+LH)+i*LH, (nrow(data)+11*LV), col=paste(ramp$col[i]), border=paste(ramp$col[i]))
       }
       scale <-seq(0,ID[length(ID)],Scale.Interval)
       lines <- seq((0.4+LH),((0.4+LH)+length(ramp$col)*LH), length.out = length(scale))
