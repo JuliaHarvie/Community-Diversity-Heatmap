@@ -27,7 +27,7 @@ downsampled <- DownSampelFun(Dataframe = masterframe2, p=0.7)[[1]]
 downsampled$Found <-as.numeric(downsampled$Found)
 LinearMin <- lm(Found~LongX+LatY, data=downsampled)
 LinearMax <- lm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), data= downsampled)
-downsampled$Found <-as.factor(downsampled$Found)
+downsampled$Found <-as.factor 
 BinomialMin <- glm(Found~ LongX+LatY, family = binomial, data = downsampled)
 BinomialMax <- glm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), family = binomial, data =downsampled)
 show(AccuracyFun(Model=LinearMin,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
@@ -467,9 +467,9 @@ RepeatFun <- function(Dataframe,Setup){
     sum(Dataframe$Found[(Grouping+(length(Unique)*(M-1)))+y])
   }  
   sort <- matrix(1:nrow(Dataframe),ncol=Setup[[3]]) 
-  M <- 2
   for(M in 1:Setup[[3]]){
     Dataframe$Repeat[sort[,M]] <- sapply(sort[,M],Check)
+    show(M)
   }  
   return(Dataframe)
 }
@@ -515,45 +515,54 @@ BoarderFun <- function(Conversion){
   countx <- c(seq(1,length(Outline),by=2),1)
   ally <- c()
   allx <- c()
-  for(k in 1:(length(county)-1)){
-    ally <- c(ally,Outline[county[k]]:Outline[county[k+1]])
-    allx <- c(allx,seq(Outline[countx[k]],Outline[countx[k+1]],length.out = length(Outline[county[k]]:Outline[county[k+1]])))
-  }
-  allx <- round(allx,0)
-  building <- list()
-  building[[max(ally)]] <- NA
-  for(n in 1:length(ally)){
-    building[[ally[n]]] <- c(building[[ally[n]]],allx[n])
-  }
-  building[[max(ally)]] <- building[[max(ally)]][-1]
-  for(n in 1:length(building)){
-    if(sum(duplicated(building[[n]]))>=1 & length(building[[n]])==2){
-      building[[n]] <- building[[n]][1]
-    }  
-    if(sum(duplicated(building[[n]]))>=1){
-      dup <- building[[n]][which(duplicated(building[[n]]))]
-      building[[n]] <- building[[n]][-which(building[[n]]==dup)]
-    }
-    building[[n]] <- sort(building[[n]])
-  }
-  rows <- list()
-  rows[[length(building)+1]] <- NA
-  for(n in 1:length(building)){
-    if(length(building[[n]])==1){
-      rows[[n]] <- building[[n]]
-    } else if (length(building[[n]])==2){
-      rows[[n]] <- seq(building[[n]][1],building[[n]][2],by = 1)
+  ROUND <- function(x){
+    y <- round(x)
+    if(y-x <= 0.5){
+      return(y)
     } else {
-      for(c in 1:(length(building[[n]])/2)){
-        rows[[n]] <- c(rows[[n]],
-                       seq(building[[n]][seq(1,length(building[[n]])-1,by=2)[c]],
-                           building[[n]][seq(2,length(building[[n]]),by=2)[c]],
-                           by=1))
+      retunr(y-1)
+    }
+  }
+  for(k in 1:(length(Outline)/2)){
+    currenty <- (Outline[county[k]]:Outline[county[k+1]])
+    currentx <- (Outline[countx[k]]:Outline[countx[k+1]])
+    if(length(currenty) > length(currentx)){
+      ally <- c(ally,currenty)
+      currentx <- seq(Outline[countx[k]],Outline[countx[k+1]],length.out = length(Outline[county[k]]:Outline[county[k+1]]))
+      allx <- c(allx,currentx)
+      allx <- sapply(allx,ROUND)
+    } else if(length(currenty)<length(currentx)){
+      allx <- c(allx,currentx)
+      currenty <- seq(Outline[county[k]],Outline[county[k+1]],length.out = length(Outline[countx[k]]:Outline[countx[k+1]]))
+      ally <- c(ally,currenty)
+      ally <- sapply(ally,ROUND)
+    }else{
+      ally <- c(ally,currenty)
+      allx <- c(allx,currentx)
+    }
+  }
+  First <- cbind(allx,ally)
+  maxy <- max(First[,2]) 
+  maxx <- max(First[,1])
+  Second <- matrix(NA,1,2)
+  for(y in 1:maxy){
+    show(y)
+    for(x in 1:maxx){
+      Yones <- First[which(First[,1]==x),2]
+      if(length(which(Yones>=y))>=1 && length(which(Yones<=y))>=1){
+        Xones <- First[which(First[,2]==y)]
+        if(length(which(Xones>=x))>=1 && length(which(Xones<=x))>=1){
+          Second <- rbind(Second,c(x,y))
+        }else{
+          NULL
+        }
+      } else {
+        NULL
       }
     }
   }
-  rows[[length(building)+1]] <- NULL
-  return(rows)
+  Final <- rbind(First,Second[-1,])
+  return(Final)
 }
 
 #====================================================================================== 
@@ -567,16 +576,14 @@ PlotFUN <- function(Boarder, Setup, Dataframe, Model, Subset=NA){
   Repeat <- Dataframe$Repeat[1:length(Unique)]
   if(is.na(Subset)){ Subset <- 1:Setup[[3]] } 
   for(E in Subset){
-    matrix <- matrix(NA,nrow=length(Boarder),ncol=max(unlist(Boarder)))
-    for(Y in 1:length(Boarder)){
-      for(X in 1:length(Boarder[[Y]])){
-        newdata <- data.frame("LongX" = rep(Boarder[[Y]][X],time=length(Unique)),
-                              "LatY" = rep(Y,time=length(Unique)),
-                              "Event" = rep(E,time=length(Unique)),
-                              "Repeat" = Repeat) 
-        matrix[Y,Boarder[[Y]][X]] <- sum(ifelse(predict(Model,newdata=newdata,type="response")>=0.5,1,0))
-      }
-      show(Y)
+    matrix <- matrix(NA,nrow=max(Boarder[,2]),ncol=max(Boarder[,1]))
+    for(n in 1:nrow(Boarder)){
+      newdata <- data.frame("LongX" = rep(Boarder[n,1],time=length(Unique)),
+                            "LatY" = rep(Boarder[n,2],time=length(Unique)),
+                            "Event" = rep(E,time=length(Unique)),
+                            "Repeat" = Repeat) 
+      matrix[Boarder[n,2],Boarder[n,1]] <- sum(ifelse(predict(Model,newdata=newdata,type="response")>=0.5,1,0))
+      show(Boarder[n,2])
     }
     plotholder[[E]] <- matrix
   }
@@ -588,14 +595,14 @@ PlotFUN <- function(Boarder, Setup, Dataframe, Model, Subset=NA){
 #======================================================================================
 #
 
-PDFOutFun <- function(Plots,Colours = c("green","yellow","orange","red"),Gradient.Interval=10,Legend=T,Scale.Interval=100,Title=NA) {
+PDFOutFun <- function(Plots,Colours = c("green","yellow","orange","red"),Gradient.Interval=10,Legend=T,Scale.Interval=100,Title=NA,File.Name="Output") {
   mycol <- colorRampPalette(Colours)
   top <- max(unlist(Plots)[!is.na(unlist(Plots))])
   ID <- seq(0,top,Gradient.Interval)
   if(ID[length(ID)]<top){ID <-c(ID,(ID[length(ID)]+Gradient.Interval))}
   ramp <- data.frame("ID"=ID, "col"= mycol(length(ID))[1:length(ID)], stringsAsFactors=F)
   for(n in 1:length(Plots)){
-    pdf(file=paste("Output",n,".pdf",sep=""))
+    pdf(file=paste(File.Name,n,".pdf",sep=""))
     data <- Plots[[n]]
     par(mar=c(0,0,0,0))
     plot(NULL, ylim=c(0, (nrow(data)+60)), xlim=c(0, ncol(data)), xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
