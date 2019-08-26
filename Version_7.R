@@ -27,7 +27,7 @@ downsampled <- DownSampelFun(Dataframe = masterframe2, p=0.7)[[1]]
 downsampled$Found <-as.numeric(downsampled$Found)
 LinearMin <- lm(Found~LongX+LatY, data=downsampled)
 LinearMax <- lm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), data= downsampled)
-downsampled$Found <-as.factor 
+downsampled$Found <-as.factor(downsampled$Found) 
 BinomialMin <- glm(Found~ LongX+LatY, family = binomial, data = downsampled)
 BinomialMax <- glm(Found~ LongX+LatY+as.factor(Event)+as.factor(Repeat), family = binomial, data =downsampled)
 show(AccuracyFun(Model=LinearMin,Testdata = DownSampelFun(Dataframe = masterframe2,p=0.7)[[3]]))
@@ -315,109 +315,13 @@ ConversionFun <- function(Setup,km = F, Poles = F){
   return(list(plot_outline,trap_locations))
 }
 
-### Pretty sure the function below is no longer need, going to
-
-#====================================================================================== 
-## Function  - Array Placment 
-#======================================================================================
-#
-# Takes the the converted quarentents and uses them to build an array as well as being to populate it with known abundance valueas. 
-
-#Array_placement <- function(Setup, Outlines, Data){
-#  all_matrix <- list()
-#  traps <- list()
-#  if (Setup[[5]]){
-#    for(m in 1:Setup[[3]]){
-#      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
-#      for (k in 1:Setup[[4]]){
-#        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-3]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-2]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*4*Setup[[4]])+k*4-1]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*4*Setup[[4]])+k*4]])
-#        if(m == 1){
-#          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
-#        }
-#      }
-#    }
-#  } else {
-#    for(m in 1:Setup[[3]]){
-#      all_matrix[[m]] <- matrix(0,Outlines[[2]],Outlines[[1]])
-#      for (k in 1:Setup[[4]]){
-#        all_matrix[[m]][Outlines[[4]][(2*k)]+1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]+1] <- length(Data[[((m-1)*Setup[[4]])+k]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)]-1,Outlines[[4]][(2*k-1)]] <- length(Data[[((m-1)*Setup[[4]])+k]])
-#        all_matrix[[m]][Outlines[[4]][(2*k)],Outlines[[4]][(2*k-1)]-1] <- length(Data[[((m-1)*Setup[[4]])+k]])
-#        if(m == 1){
-#          traps[[k]]<- list(c(Outlines[[4]][(2*k-1)],Outlines[[4]][(2*k)]),c(1:4)+(4*(k-1)))
-#        }
-#      }
-#    }
-#  }
-#  sort_y <- c()  
-#  for(T in 1:Setup[[4]]){
-#    sort_y[T] <- traps[[T]][[2]]  
-#  }
-#  ### top to bottom (NtoS) ###  
-#  TtoB <- sort(sort_y,decreasing =TRUE)
-#  TtoBmatrix <- matrix(NA, Setup[[4]]+1, 5)
-#  for (r in 1:5){
-#    for (k in 1:5){
-#      if (TtoB[r] == traps[[k]][[2]]){
-#        TtoBmatrix[r,] <- c(traps[[k]][[3]], NA)
-#      }
-#    }
-#  }
-#  sort_x <- c()  
-#  for(T in 1:Setup[[4]]){
-#    sort_x[T] <- traps[[T]][[1]]  
-#  }
-#  ### right to left (east to west) ###  
-#  RtoL <- sort(sort_x,decreasing =TRUE)  
-#  RtoLmatrix <- matrix(NA, Setup[[4]]+1, 5)
-#  for (r in 1:Setup[[4]]){
-#    for (k in 1:Setup[[4]]){
-#      if (RtoL[r] == traps[[k]][[1]]){
-#        RtoLmatrix[r,] <- c(traps[[k]][[3]], NA)
-#      }
-#    }
-#  }
-#  return(list(all_matrix,traps,TtoBmatrix,RtoLmatrix))
-#}
-
-
-# The object returned from this function is a two part list. For simplicity it is recommened to segrate them into their own objects. As done below
-#plots <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[1]]
-#traps <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[2]]
-# I am going to name the object containing my direction matrices using north, south, east and west, not top, bottom, right and left because
-# conceptually easier, but note techincally is still refereing to positions in an array which does not have geographical directions  
-#NtoSmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[3]] 
-#EtoWmatrix <- Array_placement(Setup = setup, Outlines = conversion, Data = data)[[4]] 
-
-
-
-
-
-
-
-
-
-#====================================================================================== 
-## Function 6 - Unique
-#======================================================================================
-# 
-# Even though this technically is just creating one vector that will be incorrperated into a master dataframe later.
-# Going to keep it as its own function because this is an important list and might be nice to be able to produce it on its own. 
-
-UniqueFun <- function(Data){
-  unique(unlist(Data))
-}
-
 #====================================================================================== 
 ## Function 7 - Master Dataframe
 #======================================================================================
 # 
-MasterDataframeFun <- function(Data,Unique,Setup,Conversion){
+MasterDataframeFun <- function(Data,Setup,Conversion){
   Found <- c()
+  Unique <- unique(unlist(Data))
   if(Setup[[5]]){
     total <- length(Data)*length(Unique)
     k <- 1
