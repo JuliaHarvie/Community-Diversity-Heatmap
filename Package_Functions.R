@@ -1,5 +1,3 @@
-#Good version of all functions that I will post to Github
-#Requirred Libraries
 
 library(stringr)
 library(data.table)
@@ -283,7 +281,7 @@ MasterDataFrameFun <- function(Data,Setup,Conversion,Repeat=T,Model_Type){
     stop("Currently the only model types supported are 'Binomial' and 'Linear'", call.= F)
   }
 }  
-DownSampelFun <- function(Dataframe,p){
+DownSampleFun <- function(Dataframe,p=0.7){
   DataPartition <- createDataPartition(Dataframe$Found, p=p, list = F)
   TrainingData <- Dataframe[DataPartition, ]
   TestingData <- Dataframe[-DataPartition, ]
@@ -470,4 +468,7 @@ PDFOutFun <- function(Plots,Colours=NA,Gradient.Interval=10,Legend=T,Scale.Inter
     dev.off()
   }
 }
-
+     
+            
+            
+            
